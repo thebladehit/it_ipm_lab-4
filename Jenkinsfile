@@ -1,33 +1,48 @@
 pipeline {
-    agent any
+    agent {
+            docker {
+                image 'conanio/gcc10'
+                args '-u root'
+            }
+        }
+
+    environment {
+        BUILD_DIR = 'build'
+    }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: 'add here your url', credentialsId: 'add credentialsId'
+                git credentialsId: 'github_jenkins_key', url: 'https://github.com/thebladehit/it_ipm_lab-4.git', branch: 'main'
             }
         }
-        
+
         stage('Build') {
             steps {
-                // Крок для збірки проекту з Visual Studio
-                // Встановіть правильні шляхи до рішення/проекту та параметри MSBuild
-                bat '"path to MSBuild" test_repos.sln /t:Build /p:Configuration=Release'
+                sh 'cmake -S . -B ${BUILD_DIR}'
+                sh 'cmake --build ${BUILD_DIR}'
             }
         }
 
         stage('Test') {
             steps {
-                // Команди для запуску тестів
-                bat "x64\\Debug\\test_repos.exe --gtest_output=xml:test_report.xml"
+                sh './${BUILD_DIR}/vs_mkr_test1 --gtest_output=xml:report.xml'
+            }
+
+            post {
+                always {
+                    junit 'report.xml'
+                }
             }
         }
     }
 
     post {
-    always {
-        // Publish test results using the junit step
-         // Specify the path to the XML test result files
+        success {
+            echo 'Build and tests were successful!'
+        }
+        failure {
+            echo 'Something went wrong!'
+        }
     }
-}
 }
